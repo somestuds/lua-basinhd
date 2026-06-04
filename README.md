@@ -1,7 +1,7 @@
 # BasinHD
 Lua library for Tom's Peripherals; ComputerCraft: Tweaked
 ***
-* Graphics library made to be similar to [Basalt](https://basalt.madefor.cc), but for Tom's Peripherals HD monitors
+* UI Framework made to be similar to [Basalt](https://basalt.madefor.cc), but for Tom's Peripherals HD monitors
 * similar functionality, more lightweight
 * full LuaLS support
 ***
