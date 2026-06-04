@@ -4,8 +4,7 @@ Lua library for Tom's Peripherals; ComputerCraft: Tweaked
 * Graphics library made to be similar to Basalt, but for Tom's Peripherals HD monitors
 * similar functionality, more lightweight
 * full LuaLS support
-<br/>
-___
+***
 **Code Example**
 ```lua
 local gpu = peripheral.find('tm_gpu')
