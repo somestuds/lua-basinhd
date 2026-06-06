@@ -1,5 +1,45 @@
+Log = {}
+
+--- @private
+--- @param color integer
+function Log._setColor(color)
+    local oldColor = term.getTextColor()
+    term.setTextColor(color)
+    return oldColor
+end
+
+function Log.info(...)
+    local oc = Log._setColor(colors.lightGray)
+    local inf = debug.getinfo(2, 'S')
+    print('' .. inf.short_src .. ':' .. inf.linedefined .. ' INFO>', ...)
+    Log._setColor(oc)
+end
+
+function Log.warn(...)
+    local oc = Log._setColor(colors.yellow)
+    local inf = debug.getinfo(2, 'S')
+    print('' .. inf.short_src .. ':' .. inf.linedefined .. ' WARN>', ...)
+    Log._setColor(oc)
+end
+
+function Log.error(...)
+    local oc = Log._setColor(colors.orange)
+    local inf = debug.getinfo(2, 'S')
+    print('' .. inf.short_src .. ':' .. inf.linedefined .. ' ERR>', ...)
+    Log._setColor(oc)
+end
+
+--- @param err string
+--- @param level? integer
+function Log.errorfatal(err, level)
+    level = level or 1
+    error('ERRFATAL> ' .. err, level + 1)
+end
+
+
 --- @alias horizontalScreenAnchor 'left'|'center'|'right'|'none'
 --- @alias verticalScreenAnchor 'top'|'center'|'bottom'|'none'
+--- @alias nineWayScreenAnchor 'topLeft'|'topMiddle'|'topRight'|'centerLeft'|'centerMiddle'|'centerRight'|'bottomLeft'|'bottomMiddle'|'bottomRight'
 UniversalTextHeight = 8
 
 --- @param value number
@@ -7,6 +47,11 @@ UniversalTextHeight = 8
 --- @param max number
 --- @return number
 function math.clamp(value, min, max)
+    if not value or not min or not max then
+        error(
+            'Invalid parameters for math.clamp\nValue:' ..
+            tostring(value) .. '\nmin:' .. tostring(min) .. '\nmax:' .. tostring(max), 2)
+    end
     return math.max(min, math.min(max, value))
 end
 
@@ -48,10 +93,10 @@ function Switch(value, conditions)
             return condition
         end
     else
-        error("No condition found for switch statement", 2)
+        Log.errorfatal('No condition found for switch statement', 2)
     end
 end
 
--- function SwitchFunction(value, conditions)
-    
--- end
+function string:includes(query)
+    return self:find(query) ~= nil
+end

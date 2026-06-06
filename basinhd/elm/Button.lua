@@ -3,13 +3,17 @@ local TextLabel = require('basinhd.elm.TextLabel')
 --- @class Button : VisualElement
 local Button = setmetatable({}, { __index = VisualElement })
 Button.__index = Button
-Button.className = 'Button'
+Button._className = 'Button'
 
 Button.width = 8
 Button.height = 6
 Button.background = 0x828282
+--- @private
 --- @type function
 Button.onclick = function() end
+--- @private
+--- @type function
+Button.onhover = function() end
 Button.textenabled = true
 Button._textLabel = nil
 --- @type horizontalScreenAnchor
@@ -24,6 +28,23 @@ Button.textOffset = { 0, 0 }
 function Button:onClick(onclick)
     self.onclick = onclick
     return self
+end
+
+--- @param onhover function
+function Button:onHover(onhover)
+    self.onhover = onhover
+    return self
+end
+
+--- @protected
+--- @param hovering boolean
+function Button:_hover(hovering)
+    self.onhover(self, hovering)
+end
+
+--- @protected
+function Button:_click()
+    self.onclick(self)
 end
 
 --- @param enabled boolean
@@ -62,30 +83,30 @@ function Button:setTextOffset(x, y)
     return self
 end
 
--- --- @param self Button
--- --- @param parent? BaseElement
--- --- @return Button
--- function Button:new(parent)
---     ---@class Button
---     local button = setmetatable({}, { __index = VisualElement.new(self, parent) })
---     button.__index = button
---     button._textLabel = TextLabel:new(button)
---     button._textLabel:setTextAnchor('center', 'center')
---     return button
--- end
+--- @param scale integer
+function Button:setTextScale(scale)
+    self._textLabel:setTextScale(scale)
+    return self
+end
 
 --- @protected
 function Button:_postInit()
+    VisualElement._postInit(self)
+    self.textOffset = { 0, 0 }
+    self._textLabel = {}
     self._textLabel = TextLabel:new(self)
     self._textLabel:setTextAnchor('center', 'center')
-    self._textLabel:setText('Button')
+    self._textLabel:setPosition(0, 0)
 end
 
 function Button:_render()
-    if not self.visible then return 0, 0, 0, 0 end
-    local x, y, w, h = VisualElement._render(self)
-    if h >= UniversalTextHeight and self.textenabled then self._textLabel:_render() end
-    return x, y, w, h
+    local rendered = VisualElement._render(self)
+    if not rendered then return false end
+
+    if self.height >= UniversalTextHeight and self.textenabled then
+        self._textLabel:_render()
+    end
+    return true
 end
 
 return Button

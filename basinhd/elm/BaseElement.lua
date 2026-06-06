@@ -3,6 +3,7 @@ require('basinhd.util')
 --- @class BaseElement
 local BaseElement = {}
 BaseElement.__index = BaseElement
+--- @protected
 BaseElement._className = 'BaseElement'
 --- @protected
 --- @type number
@@ -10,13 +11,18 @@ BaseElement._definitionPeriod = 0
 
 BaseElement.x = 1
 BaseElement.y = 1
+--- @protected
+BaseElement._absoluteX = 1
+--- @protected
+BaseElement._absoluteY = 1
 BaseElement.z = 1
 BaseElement.visible = true
+BaseElement.alwaysOnTop = false
 
 --- @generic T : BaseElement
 --- @param self T
---- @param x number
---- @param y number
+--- @param x integer
+--- @param y integer
 --- @return T
 function BaseElement:setPosition(x, y)
     self:setX(x)
@@ -26,19 +32,27 @@ end
 
 --- @generic T : BaseElement
 --- @param self T
---- @param x number
+--- @param x integer
 --- @return T
 function BaseElement:setX(x)
-    self.x = x
+    if x < 0 then
+        self.x = 1 + self.parent.width + x
+    else
+        self.x = x
+    end
     return self
 end
 
 --- @generic T : BaseElement
 --- @param self T
---- @param y number
+--- @param y integer
 --- @return T
 function BaseElement:setY(y)
-    self.y = y
+    if y < 0 then
+        self.y = 1 + self.parent.height + y
+    else
+        self.y = y
+    end
     return self
 end
 
@@ -51,33 +65,45 @@ function BaseElement:setVisible(visible)
     return self
 end
 
---- @protected
---- @param sx number
---- @param x number
---- @return number
-function BaseElement._localXToScreenX(sx, x)
-    return (sx - 1) + x
-end
-
---- @protected
---- @param sy number
---- @param y number
---- @return number
-function BaseElement._localYToScreenY(sy, y)
-    return (sy - 1) + y
-end
-
---- @protected
---- @param parent BaseElement?
---- @param x number
---- @param y number
---- @return number, number
-function BaseElement._alignChildToParent(parent, x, y)
-    if parent then
-        return -1 + parent.x + x, -1 + parent.y + y
+--- @generic T : BaseElement
+--- @param self T
+--- @param aot boolean
+--- @return T
+function BaseElement:setAlwaysOnTop(aot)
+    self.alwaysOnTop = aot
+    if aot then
+        table.insert(self.root._alwaysOnTopElements, self)
     else
-        return x, y
+        local found = nil
+        for i, aote in pairs(self.root._alwaysOnTopElements) do
+            if aote._definitionPeriod == self._definitionPeriod then
+                found = i
+            end
+        end
+        if found then
+            table.remove(self.root._alwaysOnTopElements, found)
+        end
     end
+    return self
+end
+
+--- @protected
+--- @generic T : BaseElement
+--- @param self T
+--- @param aoX? integer
+--- @param aoY? integer
+--- @return T
+function BaseElement:_alignToParent(aoX, aoY)
+    if self.parent then
+        self._absoluteX = -1 + self.parent._absoluteX + self.x + (aoX or 0)
+        self._absoluteY = -1 + self.parent._absoluteY + self.y + (aoY or 0)
+    end
+    return self
+end
+
+function BaseElement:_postInit()
+    self._buttons = {}
+    self._frames = {}
 end
 
 --- @generic T : BaseElement
@@ -88,17 +114,58 @@ function BaseElement:new(parent)
     local new = setmetatable({}, { __index = self })
     new.__index = new
 
-    local bounds = _G.gpu.getBounds()
-    new.glw, new.glh = bounds.getW(), bounds.getH()
     new.parent = parent
-    new._definitionPeriod = os.epoch('utc') / 1000
+    new.root = parent and parent.root
+    if new.root then
+        new.root._counter = new.root._counter + 1
+        new._definitionPeriod = new.root._counter
+
+        if new._className == 'Button' then
+            table.insert(new.root._buttons, new)
+        elseif new._className == 'Frame' then
+            table.insert(new.root._frames, new)
+        else
+            table.insert(new.root._elements, new)
+        end
+    end
 
     local postInit = new._postInit
     if postInit ~= nil and type(postInit) == 'function' then
         new:_postInit()
+    else
+        Log.errorfatal('Element by classname ' .. new._className .. ' does not have postInit')
     end
 
     return new
+end
+
+function BaseElement:remove()
+    if self.children then
+        for i = #self.children, 1, -1 do
+            self.children[i]:remove()
+            self.children[i] = nil
+        end
+    end
+
+    if self.parent and self.parent.children then
+        for i = #self.parent.children, 1, -1 do
+            if self.parent.children[i] == self then
+                table.remove(self.parent.children, i)
+                break
+            end
+        end
+    end
+
+    -- 3. clear references
+    self.parent = nil
+    self.children = nil
+end
+
+---@return boolean
+function BaseElement:_render()
+    if self.alwaysOnTop and not self.root.renderingAOT then return false end
+    if not self.visible then return false end
+    return true
 end
 
 return BaseElement
